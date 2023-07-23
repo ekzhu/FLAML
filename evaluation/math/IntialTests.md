@@ -264,3 +264,394 @@ The calculated derivative matches our expectations, which is “f’(x) = 6x + 2
 
 Next request.
 ```
+
+
+## ChatGPT Plus (GPT-4 + Plugin)
+Website: https://chat.openai.com/
+
+### 1. Observations
+
+- GPT-4 + Wolfram Alpha is competitive in solving math problems. It can solve the problem correctly by directly querying wolfram.
+- GPT-4 + Wolfram Alpha can sometimes get stuck sending the same error query, which can only be stopped manually.
+
+### 2. Test Cases
+
+**Test problem 1**: Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.
+
+Setup: Choose GPT-4 + Wolfram Alpha Plugin.
+
+ChatGPT Plus can solve the problem correctly by directly querying wolfram.
+```
+REQUEST TO WOLFRAM
+{
+  "input": "solve (2x+10)(x+3)<(3x+9)(x+8) for x"
+}
+RESPONSE FROM WOLFRAM
+Query:
+"solve (2x+10)(x+3)<(3x+9)(x+8) for x"
+
+Input interpretation:
+solve (2 x + 10) (x + 3)<(3 x + 9) (x + 8) for x
+
+Results:
+x<-14
+
+x>-3
+
+Number line:
+image: https://www6b3.wolframalpha.com/Calculate/MSP/MSP15481h8039ib01hd1169000041ai8ae4372c42c8?MSPStoreType=image/png&s=9
+
+Wolfram|Alpha website result for "solve (2x+10)(x+3)<(3x+9)(x+8) for x":
+https://www.wolframalpha.com/input?i=solve+%282x%2B10%29%28x%2B3%29%3C%283x%2B9%29%28x%2B8%29+for+x
+
+
+The solution to the inequality \((2x+10)(x+3)<(3x+9)(x+8)\) is \(x < -14\) or \(x > -3\). 
+
+In interval notation, this is expressed as \((-∞, -14) \cup (-3, ∞)\).
+
+Here is a number line representation of the solution:
+
+![Number Line](https://www6b3.wolframalpha.com/Calculate/MSP/MSP15481h8039ib01hd1169000041ai8ae4372c42c8?MSPStoreType=image/png&s=9)
+
+For more details, you can visit the [Wolfram|Alpha result page](https://www.wolframalpha.com/input?i=solve+%282x%2B10%29%28x%2B3%29%3C%283x%2B9%29%28x%2B8%29+for+x).
+```
+
+
+**Test Problem 2**: There are 190 people on the beach.  110 are wearing sunglasses, 70 are wearing bathing suits, and 95 are wearing a hat.  Everyone is wearing at least one of these items. 30 are wearing both bathing suits and sunglasses. 25 are wearing both bathing suits and a hat. 40 are wearing both sunglasses and a hat.  How many people are wearing all three items?
+
+```
+This is a problem of set theory and can be solved using the principle of inclusion and exclusion. The principle of inclusion and exclusion states that for any three sets A, B, and C, the size of their union can be found by adding the sizes of the sets, then subtracting the sizes of the pairwise intersections, and finally adding back the size of the intersection of all three.
+
+Let's denote:
+- A as the set of people wearing sunglasses
+- B as the set of people wearing bathing suits
+- C as the set of people wearing a hat
+
+We know that:
+- |A| = 110 (people wearing sunglasses)
+- |B| = 70 (people wearing bathing suits)
+- |C| = 95 (people wearing a hat)
+- |A ∩ B| = 30 (people wearing both sunglasses and bathing suits)
+- |A ∩ C| = 40 (people wearing both sunglasses and a hat)
+- |B ∩ C| = 25 (people wearing both bathing suits and a hat)
+- |A ∪ B ∪ C| = 190 (total people on the beach)
+
+We can find the number of people wearing all three items (|A ∩ B ∩ C|) by rearranging the formula of the principle of inclusion and exclusion:
+
+|A ∩ B ∩ C| = |A| + |B| + |C| - |A ∩ B| - |A ∩ C| - |B ∩ C| + |A ∪ B ∪ C|
+
+Let's calculate this.
+
+Apologies for the confusion. The symbol "C" is a built-in constant in the Wolfram Language, representing the speed of light, and cannot be reassigned. Let's use different symbols to represent the sets:
+
+- S for the set of people wearing sunglasses
+- B for the set of people wearing bathing suits
+- H for the set of people wearing a hat
+
+Let's calculate again.
+
+REQUEST TO WOLFRAM
+{
+  "input": "S = 110; B = 70; H = 95; SB = 30; SH = 40; BH = 25; SBH_total = 190; SBH = S + B + H - SB - SH - BH + SBH_total; SBH"
+}
+RESPONSE FROM WOLFRAM
+"180 + (SBH_total)"
+
+I apologize for the confusion. It seems there was an error in the calculation. The variable "SBH_total" was not correctly replaced with its value. Let's try again.
+
+REQUEST TO WOLFRAM
+{
+  "input": "S = 110; B = 70; H = 95; SB = 30; SH = 40; BH = 25; SBH_total = 190; SBH = S + B + H - SB - SH - BH + SBH_total; SBH"
+}
+RESPONSE FROM WOLFRAM
+"180 + (SBH_total)"
+
+I apologize for the confusion. It seems there was an error in the calculation. The variable "SBH_total" was not correctly replaced with its value. Let's try again.
+
+REQUEST TO WOLFRAM
+{
+  "input": "S = 110; B = 70; H = 95; SB = 30; SH = 40; BH = 25; SBH_total = 190; SBH = S + B + H - SB - SH - BH + SBH_total; SBH"
+}
+RESPONSE FROM WOLFRAM
+"180 + (SBH_total)"
+
+I apologize for the confusion. It seems there was an error in the calculation. The variable "SBH_total" was not correctly replaced with its value. Let's try again.
+
+...Manually stopped.
+```
+
+## LangChain
+Github: https://github.com/hwchase17/langchain   
+Docs: https://python.langchain.com/docs/get_started/introduction.html
+
+### 1. Observations
+
+- Langchain has several math related chains: Math chains, Symbolic Math chains, PALChain. The ReAct agent is related to problem solving.
+- Among the chains tried, ReAct+Python solves both problem neatly.
+- A major difference between ReAct+Python and MathChat is that ReAct+Python is viewed as one agent, but MathChat simluates interactions between two agents.
+
+### 2. Tests
+#### Test [Symbolic Math Chain](https://python.langchain.com/docs/modules/chains/additional/llm_symbolic_math)
+
+Example code (See `test_langchain.py` for more chains)
+```python
+from langchain.chat_models import ChatOpenAI
+from langchain.chains.llm_symbolic_math.base import LLMSymbolicMathChain
+
+llm = ChatOpenAI(model_name='gpt-4')
+llm_symbolic_math = LLMSymbolicMathChain.from_llm(llm)
+
+math_problem = "" # fill the problem here
+print(llm_symbolic_math.run(math_problem = ""))
+```
+
+**Test Problem 1**: Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.
+
+The answer is correct:
+```
+Answer: ((-oo < x) & (x < -14)) | ((-3 < x) & (x < oo))
+```
+
+
+**Test Problem 2**: There are 190 people on the beach.  110 are wearing sunglasses, 70 are wearing bathing suits, and 95 are wearing a hat.  Everyone is wearing at least one of these items. 30 are wearing both bathing suits and sunglasses. 25 are wearing both bathing suits and a hat. 40 are wearing both sunglasses and a hat.  How many people are wearing all three items?
+
+Got many errors when running the code. It seems the prompt specifically ask the LLM to use the "sympy" package.
+```
+ValueError: Error from parse_expr with transformed code: "Symbol ('Eq1' )=Eq (Symbol ('x' )+Symbol ('y' )+Symbol ('z' ),Integer (110 ))# sunglassesEq2 = Eq(x + w + z, 70)   # bathing suitsEq3 = Eq(w + y + z, 95)   # hatEq4 = Eq(x + z, 30)       # bathing suits and sunglassesEq5 = Eq(w + z, 25)       # bathing suits and hatEq6 = Eq(y + z, 40)       # sunglasses and hatsolve((Eq1, Eq2, Eq3, Eq4, Eq5, Eq6), (x, y, z, w))"
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/sympy/core/sympify.py", line 495, in sympify
+    expr = parse_expr(a, local_dict=locals, transformations=transformations, evaluate=evaluate)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/sympy/parsing/sympy_parser.py", line 1087, in parse_expr
+    raise e from ValueError(f"Error from parse_expr with transformed code: {code!r}")
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/sympy/parsing/sympy_parser.py", line 1078, in parse_expr
+    rv = eval_expr(code, local_dict, global_dict)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/sympy/parsing/sympy_parser.py", line 906, in eval_expr
+    expr = eval(
+  File "<string>", line 1
+    Symbol ('Eq1' )=Eq (Symbol ('x' )+Symbol ('y' )+Symbol ('z' ),Integer (110 ))# sunglassesEq2 = Eq(x + w + z, 70)   # bathing suitsEq3 = Eq(w + y + z, 95)   # hatEq4 = Eq(x + z, 30)       # bathing suits and sunglassesEq5 = Eq(w + z, 25)       # bathing suits and hatEq6 = Eq(y + z, 40)       # sunglasses and hatsolve((Eq1, Eq2, Eq3, Eq4, Eq5, Eq6), (x, y, z, w))
+                   ^
+SyntaxError: invalid syntax
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/llm_symbolic_math/base.py", line 64, in _evaluate_expression
+    output = str(sympy.sympify(expression, evaluate=True))
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/sympy/core/sympify.py", line 497, in sympify
+    raise SympifyError('could not parse %r' % a, exc)
+sympy.core.sympify.SympifyError: Sympify of expression 'could not parse 'Eq1 = Eq(x + y + z, 110)  # sunglassesEq2 = Eq(x + w + z, 70)   # bathing suitsEq3 = Eq(w + y + z, 95)   # hatEq4 = Eq(x + z, 30)       # bathing suits and sunglassesEq5 = Eq(w + z, 25)       # bathing suits and hatEq6 = Eq(y + z, 40)       # sunglasses and hatsolve((Eq1, Eq2, Eq3, Eq4, Eq5, Eq6), (x, y, z, w))'' failed, because of exception being raised:
+SyntaxError: invalid syntax (<string>, line 1)
+
+During handling of the above exception, another exception occurred:
+
+... More errors not shown
+```
+----------------------------------------------------------------------------------------------------------------------------
+
+#### Test [PAL Chain](https://python.langchain.com/docs/modules/chains/additional/pal)
+
+[Program-aided language model paper](https://arxiv.org/pdf/2211.10435.pdf)
+
+**Test Problem 1**: Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.
+
+Got error:
+```
+> Entering new PALChain chain...
+def solution():
+    """Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation."""
+    from sympy import *
+    from sympy.abc import x
+Traceback (most recent call last):
+  File "/home/ykw5399/msft/FLAML/evaluation/math/test_math_chains.py", line 17, in <module>
+    print(pal_chain.run(math_problem))
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 440, in run
+    return self(args[0], callbacks=callbacks, tags=tags, metadata=metadata)[
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 243, in __call__
+    raise e
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 237, in __call__
+    self._call(inputs, run_manager=run_manager)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/pal/base.py", line 166, in _call
+    PALChain.validate_code(code, self.code_validations)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/pal/base.py", line 261, in validate_code
+    raise ValueError(f"Generated code has disallowed imports: {code}")
+ValueError: Generated code has disallowed imports: def solution():
+    """Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation."""
+    from sympy import *
+    from sympy.abc import x
+```
+
+
+**Test Problem 2**: There are 190 people on the beach. 110 are wearing sunglasses, 70 are wearing bathing suits, and 95 are wearing a hat.  Everyone is wearing at least one of these items. 30 are wearing both bathing suits and sunglasses. 25 are wearing both bathing suits and a hat. 40 are wearing both sunglasses and a hat.  How many people are wearing all three items?
+
+Correct answer is 10. Result is valid but wrong.
+```
+> Entering new PALChain chain...
+def solution():
+    """There are 190 people on the beach.  110 are wearing sunglasses, 70 are wearing bathing suits, and 95 are wearing a hat.  Everyone is wearing at least one of these items. 30 are wearing both bathing suits and sunglasses. 25 are wearing both bathing suits and a hat. 40 are wearing both sunglasses and a hat.  How many people are wearing all three items?"""
+    total_people = 190
+    sunglasses = 110
+    bathing_suits = 70
+    hats = 95
+    both_bathing_suits_sunglasses = 30
+    both_bathing_suits_hats = 25
+    both_sunglasses_hats = 40
+    all_three = (sunglasses + bathing_suits + hats) - (both_bathing_suits_sunglasses + both_bathing_suits_hats + both_sunglasses_hats)
+    result = all_three
+    return result
+Python REPL can execute arbitrary code. Use with caution.
+
+> Finished chain.
+180
+```
+
+
+----------------------------------------------------------------------------------------------------------------------------
+Test [math chain](https://python.langchain.com/docs/modules/chains/additional/llm_math)
+
+**Test Problem 1**: Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.
+
+Got error.
+```
+> Entering new LLMMathChain chain...
+Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.```text
+'2*x+10 < 3*x+9'
+'x+3 < x+8'
+
+...numexpr.evaluate("2*x+10 < 3*x+9")...
+Traceback (most recent call last):
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/llm_math/base.py", line 80, in _evaluate_expression
+    numexpr.evaluate(
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/numexpr/necompiler.py", line 817, in evaluate
+    _names_cache[expr_key] = getExprNames(ex, context)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/numexpr/necompiler.py", line 704, in getExprNames
+    ex = stringToExpression(text, {}, context)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/numexpr/necompiler.py", line 274, in stringToExpression
+    c = compile(s, '<expr>', 'eval', flags)
+  File "<expr>", line 2
+    'x+3 < x+8'
+    ^^^^^^^^^^^
+SyntaxError: invalid syntax
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ykw5399/msft/FLAML/evaluation/math/test_math_chains.py", line 26, in <module>
+    print(llm_math.run(math_problem))
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 440, in run
+    return self(args[0], callbacks=callbacks, tags=tags, metadata=metadata)[
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 243, in __call__
+    raise e
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/base.py", line 237, in __call__
+    self._call(inputs, run_manager=run_manager)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/llm_math/base.py", line 149, in _call
+    return self._process_llm_result(llm_output, _run_manager)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/llm_math/base.py", line 103, in _process_llm_result
+    output = self._evaluate_expression(expression)
+  File "/home/ykw5399/.conda/envs/camel/lib/python3.10/site-packages/langchain/chains/llm_math/base.py", line 87, in _evaluate_expression
+    raise ValueError(
+ValueError: LLMMathChain._evaluate("
+'2*x+10 < 3*x+9'
+'x+3 < x+8'
+") raised error: invalid syntax (<expr>, line 2). Please try again with a valid numerical expression
+```
+
+----------------------------------------------------------------------------------------------------------------------------
+#### Test ReAct + PythonREPL
+Langchain agent for ReAct example: https://python.langchain.com/docs/modules/agents/agent_types/react
+ReAct: https://react-lm.github.io/
+
+**Test Problem 1**: Find all $x$ that satisfy the inequality $(2x+10)(x+3)<(3x+9)(x+8)$. Express your answer in interval notation.
+
+The result is correct:
+```
+> Entering new AgentExecutor chain...
+To solve this, we need to use the principle of inclusion and exclusion. This principle states that in order to count the total of a union of different sets, we need to add the individual counts, then subtract the counts of the intersections of every two sets, and finally add the count of the intersection of all three sets. 
+
+In this case, we can start by summing up the people wearing either sunglasses, bathing suits, or a hat. We then subtract the people wearing two of these items. However, since people wearing all three items were subtracted twice in the previous operation, we need to add them back in the final operation. 
+
+So the formula would look like this: 
+
+Total = Sunglasses + Bathing suits + Hat - (Sunglasses and Bathing suits) - (Sunglasses and Hat) - (Bathing suits and Hat) + All three items
+
+We can rearrange this to solve for the people wearing all three items:
+
+All three items = Total - Sunglasses - Bathing suits - Hat + (Sunglasses and Bathing suits) + (Sunglasses and Hat) + (Bathing suits and Hat)
+
+We know all these values except for the number of people wearing all three items, so we can solve for it.
+Action: Python_REPL
+Action Input: total = 190
+sunglasses = 110
+bathing_suits = 70
+hat = 95
+sunglasses_bathing_suits = 30
+sunglasses_hat = 40
+bathing_suits_hat = 25
+
+all_three = total - sunglasses - bathing_suits - hat + sunglasses_bathing_suits + sunglasses_hat + bathing_suits_hat
+
+print(all_three)Python REPL can execute arbitrary code. Use with caution.
+
+Observation: 10
+
+Thought:I now know the final answer
+Final Answer: 10
+
+> Finished chain.
+```
+
+
+**Test Problem 2**: There are 190 people on the beach.  110 are wearing sunglasses, 70 are wearing bathing suits, and 95 are wearing a hat.  Everyone is wearing at least one of these items. 30 are wearing both bathing suits and sunglasses. 25 are wearing both bathing suits and a hat. 40 are wearing both sunglasses and a hat.  How many people are wearing all three items?
+
+The result is correct:
+```
+The inequality can be solved by first expanding the expressions on both sides, then moving all terms to one side to create a polynomial inequality. Then, the roots of the polynomial equation can be found. The sign of the polynomial in the intervals determined by these roots will tell us where the inequality is satisfied.
+Action: Python_REPL
+Action Input: 
+```python
+from sympy import *
+
+# Define the variable
+x = symbols('x')
+
+# Define the inequality
+inequality = (2*x+10)*(x+3) - (3*x+9)*(x+8)
+
+# Expand the inequality
+expanded_inequality = expand(inequality)
+
+# Find the roots of the polynomial equation
+roots = solve(expanded_inequality, x)
+
+# Sort the roots
+roots.sort()
+
+print(expanded_inequality)
+print(roots)
+```Python REPL can execute arbitrary code. Use with caution.
+
+Observation: -x**2 - 17*x - 42
+[-14, -3]
+
+Thought:The expanded inequality is $-x^2 - 17x - 42 < 0$ and the roots of the corresponding equation are $-14$ and $-3$. Next, I should test the sign of the polynomial in each interval determined by the roots. The intervals are $(-\infty, -14)$, $(-14, -3)$, and $(-3, +\infty)$. I can pick a test point in each interval and substitute it into the polynomial to check the sign.
+Action: Python_REPL
+Action Input: 
+```python
+# Define the test points
+test_points = [-15, -10, 0]
+
+# Test the sign of the polynomial at each test point
+signs = [expanded_inequality.subs(x, tp).evalf() > 0 for tp in test_points]
+
+print(signs)
+```End
+Observation: [False, True, False]
+
+Thought:The polynomial is negative at test points $-15$ and $0$ and positive at $-10$. This means the inequality is satisfied in the intervals $(-\infty, -14)$ and $(-3, +\infty)$. 
+Final Answer: $(-\infty, -14) \cup (-3, +\infty)$
+
+> Finished chain.
+$(-\infty, -14) \cup (-3, +\infty)$
+```
