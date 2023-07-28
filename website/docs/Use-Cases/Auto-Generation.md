@@ -5,7 +5,7 @@
 ## Features
 
 * An enhanced inference API as a drop-in replacement of `openai.Completion.create` or `openai.ChatCompletion.create`. It allows easy performance tuning and advanced usage patterns, including:
-  - Leveraging [`flaml.tune`](../reference/tune/tune) to adapt LLMs to applications, to maximize the utility out of using expensive foundation models and reduce the inference cost by using cheaper models or configurations which achieve equal or better performance.
+  - Leveraging [`flaml.tune`](/docs/reference/tune/tune) to adapt LLMs to applications, to maximize the utility out of using expensive foundation models and reduce the inference cost by using cheaper models or configurations which achieve equal or better performance.
   - Utilities like API unification, caching, error handling, multi-config inference, context programming etc.
 * A higher-level abstraction of using foundation models: intelligent agents which can perform tasks autonomously or with human feedback. The same abstraction allows both automated feedback and human feedback sent between agents, so that complex tasks can be accomplished, including tasks that require using tools via code.
 
@@ -13,9 +13,9 @@ The package is under active development with more features upcoming.
 
 ## Agents (Experimental)
 
-[`flaml.autogen.agents`](../reference/autogen/agent/agent) contains an experimental implementation of interactive agents which can adapt to human or simulated feedback. This subpackage is under active development.
+[`flaml.autogen.agent`](/docs/reference/autogen/agent/agent) contains an experimental implementation of interactive agents which can adapt to human or simulated feedback. This subpackage is under active development.
 
-We have designed different classes of Agents that are capable of communicating with each other through the exchange of messages to collaboratively finish a task. An agent can communicate with other agents and perform actions. Different agents can differ in what actions they perform in the `receive` method.
+We have designed different classes of Agents that are capable of communicating with each other through the exchange of messages to collaboratively finish a task. An agent can communicate with other agents and perform actions. Different agents can differ in what actions they perform after receiving messages.
 
 ### `AssistantAgent`
 
@@ -24,7 +24,9 @@ We have designed different classes of Agents that are capable of communicating w
 ### `UserProxyAgent`
 `UserProxyAgent` is an Agent class that serves as a proxy for the human user. Upon receiving a message, the UserProxyAgent will either solicit the human user's input or prepare an automatically generated reply. The chosen action depends on the settings of the `human_input_mode` and `max_consecutive_auto_reply` when the `UserProxyAgent` instance is constructed, and whether a human user input is available.
 
-Currently, the automatically generated reply is crafted based on automatic code execution. The `UserProxyAgent` triggers code execution automatically when it detects an executable code block in the received message and no human user input is provided. We plan to add more capabilities in `UserProxyAgent` beyond code execution. One can also easily extend it by overriding the `auto_reply` function of the `UserProxyAgent` to add or modify responses to the `AssistantAgent`'s specific type of message. This auto-reply capability allows for more autonomous user-agent communication while retaining the possibility of human intervention.
+By default, the automatically generated reply is crafted based on automatic code execution. The `UserProxyAgent` triggers code execution automatically when it detects an executable code block in the received message and no human user input is provided. One can also easily extend it by overriding the `auto_reply` function of the `UserProxyAgent` to add or modify responses.
+For example, `AIUserProxyAgent` is a subclass of `UserProxyAgent` which can generate replies using an LLM when code execution is not performed. Code execution can be disabled by setting `code_execution_config` to False.
+This auto-reply capability allows for more autonomous user-agent communication while retaining the possibility of human intervention.
 
 Example usage of the agents to solve a task with code:
 ```python
@@ -39,13 +41,13 @@ user_proxy = UserProxyAgent(
     human_input_mode="NEVER",  # in this mode, the agent will never solicit human input but always auto reply
     max_consecutive_auto_reply=10,  # the maximum number of consecutive auto replies
     is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE") or x.get("content", "").rstrip().endswith('"TERMINATE".'),  # the function to determine whether a message is a termination message
-    work_dir=".",
+    code_execution_config={"work_dir": "."},
 )
 
 # the assistant receives a message from the user, which contains the task description
 user.initiate_chat(
     assistant,
-    """What date is today? Which big tech stock has the largest year-to-date gain this year? How much is the gain?""",
+    message="""What date is today? Which big tech stock has the largest year-to-date gain this year? How much is the gain?""",
 )
 ```
 In the example above, we create an AssistantAgent named "assistant" to serve as the assistant and a UserProxyAgent named "user_proxy" to serve as a proxy for the human user.
@@ -61,7 +63,7 @@ Please find a visual illustration of how UserProxyAgent and AssistantAgent colla
 The `human_input_mode` parameter of `UserProxyAgent` controls the behavior of the agent when it receives a message. It can be set to `"NEVER"`, `"ALWAYS"`, or `"TERMINATE"`.
 - Under the mode `human_input_mode="NEVER"`, the multi-turn conversation between the assistant and the user_proxy stops when the number of auto-reply reaches the upper limit specified by `max_consecutive_auto_reply` or the received message is a termination message according to `is_termination_msg`.
 - When `human_input_mode` is set to `"ALWAYS"`, the user proxy agent solicits human input every time a message is received; and the conversation stops when the human input is "exit", or when the received message is a termination message and no human input is provided.
-- When `human_input_mode` is set to `"TERMINATE"`, the user proxy agent solicits human input only when a termination message is received or the number of auto reply reaches `max_consecutive_auto_reply`.
+- When `human_input_mode` is set to `"TERMINATE"`, the user proxy agent solicits human input only when a termination message is received or the number of auto replies reaches `max_consecutive_auto_reply`.
 
 #### Function Calling
 To leverage [function calling capability of OpenAI's Chat Completions API](https://openai.com/blog/function-calling-and-other-api-updates?ref=upstract.com), one can pass in a list of callable functions or class methods to `UserProxyAgent`, which corresponds to the description of functions passed to OpenAI's API.
@@ -103,14 +105,14 @@ chatbot = AssistantAgent("assistant", config_list=config_list, **oai_config)
 user = UserProxyAgent(
     "user",
     human_input_mode="NEVER",
-    work_dir="coding",
+    code_execution_config={"work_dir": "coding"},
 )
 
 # define an `execute_code` function according to the function desription
 def execute_code(code_type, code):
     # here we reuse the method in the user proxy agent
     # in general, this is not necessary
-    return user.execute_code([(code_type, code)])
+    return user.execute_code_blocks([(code_type, code)])
 
 # register the `execute_code` function
 user.register_function(function_map={"execute_code": execute_code})
@@ -118,7 +120,7 @@ user.register_function(function_map={"execute_code": execute_code})
 # start the conversation
 user.initiate_chat(
     assistant,
-    "Draw a rocket and save to a file named 'rocket.svg'",
+    message="Draw a rocket and save to a file named 'rocket.svg'",
 )
 ```
 
@@ -135,9 +137,11 @@ user.initiate_chat(
 
 * [Multi-Agent Communication and Planning](https://github.com/microsoft/FLAML/blob/main/notebook/autogen_agent_planning.ipynb)
 
+* [Multi-Agent Multi-User Application](https://github.com/microsoft/FLAML/blob/main/notebook/autogen_agent_two_users.ipynb)
+
 ## Enhanced Inference
 
-One can use [`flaml.oai.Completion.create`](../reference/autogen/oai/completion#create) to perform inference.
+One can use [`flaml.oai.Completion.create`](/docs/reference/autogen/oai/completion#create) to perform inference.
 There are a number of benefits of using `flaml.oai.Completion.create` to perform inference.
 
 ### Tune Inference Parameters
@@ -189,7 +193,7 @@ def eval_math_responses(responses: List[str], solution: str, **args) -> Dict:
     return {"success": is_equivalent(answer, solution)}
 ```
 
-[`flaml.autogen.code_utils`](../reference/autogen/code_utils) and [`flaml.autogen.math_utils`](../reference/autogen/math_utils) offer some example evaluation functions for code generation and math problem solving.
+[`flaml.autogen.code_utils`](/docs/reference/autogen/code_utils) and [`flaml.autogen.math_utils`](/docs/reference/autogen/math_utils) offer some example evaluation functions for code generation and math problem solving.
 
 #### Metric to optimize
 
@@ -218,7 +222,7 @@ The optimization budget refers to the total budget allowed in the tuning process
 
 #### Perform tuning
 
-Now, you can use [`flaml.oai.Completion.tune`](../reference/autogen/oai/completion#tune) for tuning. For example,
+Now, you can use [`flaml.oai.Completion.tune`](/docs/reference/autogen/oai/completion#tune) for tuning. For example,
 
 ```python
 from flaml import oai
@@ -235,11 +239,11 @@ config, analysis = oai.Completion.tune(
 ```
 
 `num_samples` is the number of configurations to sample. -1 means unlimited (until optimization budget is exhausted).
-The returned `config` contains the optimized configuration and `analysis` contains an [ExperimentAnalysis](../reference/tune/analysis#experimentanalysis-objects) object for all the tried configurations and results.
+The returned `config` contains the optimized configuration and `analysis` contains an [ExperimentAnalysis](/docs/reference/tune/analysis#experimentanalysis-objects) object for all the tried configurations and results.
 
 The tuend config can be used to perform inference.
 
-*Refer to this [page](../Examples/AutoGen-OpenAI) for a full example. Or check the following notebook examples:*
+*Refer to this [page](/docs/Examples/AutoGen-OpenAI) for a full example. Or check the following notebook examples:*
 * [Optimize for Code Generation](https://github.com/microsoft/FLAML/blob/main/notebook/autogen_openai_completion.ipynb)
 * [Optimize for Math](https://github.com/microsoft/FLAML/blob/main/notebook/autogen_chatgpt_gpt4.ipynb)
 
@@ -249,19 +253,19 @@ The tuend config can be used to perform inference.
 `flaml.oai.Completion.create` is compatible with both `openai.Completion.create` and `openai.ChatCompletion.create`, and both OpenAI API and Azure OpenAI API. So models such as "text-davinci-003", "gpt-3.5-turbo" and "gpt-4" can share a common API.
 When chat models are used and `prompt` is given as the input to `flaml.oai.Completion.create`, the prompt will be automatically converted into `messages` to fit the chat completion API requirement. One advantage is that one can experiment with both chat and non-chat models for the same prompt in a unified API.
 
-For local LLMs, one can spin up an endpoint using a package like [simple_ai_server](https://github.com/lhenault/simpleAI), and then use the same API to send a request.
+For local LLMs, one can spin up an endpoint using a package like [simple_ai_server](https://github.com/lhenault/simpleAI) and [FastChat](https://github.com/lm-sys/FastChat), and then use the same API to send a request. See [here](/blog/2023/07/14/Local-LLMs) for examples on how to make inference with local LLMs.
 
 When only working with the chat-based models, `flaml.oai.ChatCompletion` can be used. It also does automatic conversion from prompt to messages, if prompt is provided instead of messages.
 
 ### Caching
 
-API call results are cached locally and reused when the same request is issued. This is useful when repeating or continuing experiments for reproducibility and cost saving. It still allows controlled randomness by setting the "seed", using [`set_cache`](../reference/autogen/oai/completion#set_cache) or specifying in `create()`.
+API call results are cached locally and reused when the same request is issued. This is useful when repeating or continuing experiments for reproducibility and cost saving. It still allows controlled randomness by setting the "seed", using [`set_cache`](/docs/reference/autogen/oai/completion#set_cache) or specifying in `create()`.
 
 ### Error handling
 
 #### Runtime error
 
-It is easy to hit error when calling OpenAI APIs, due to connection, rate limit, or timeout. Some of the errors are transient. `flaml.oai.Completion.create` deals with the transient errors and retries automatically. Initial request timeout, retry timeout and retry time interval can be configured via `flaml.oai.request_timeout`, `flaml.oai.retry_timeout` and `flaml.oai.retry_time`.
+It is easy to hit error when calling OpenAI APIs, due to connection, rate limit, or timeout. Some of the errors are transient. `flaml.oai.Completion.create` deals with the transient errors and retries automatically. Initial request timeout, retry timeout and retry time interval can be configured via `request_timeout`, `retry_timeout` and `flaml.oai.Completion.retry_time`.
 
 Moreover, one can pass a list of configurations of different models/endpoints to mitigate the rate limits. For example,
 
@@ -273,7 +277,7 @@ response = oai.Completion.create(
             "api_key": os.environ.get("AZURE_OPENAI_API_KEY"),
             "api_type": "azure",
             "api_base": os.environ.get("AZURE_OPENAI_API_BASE"),
-            "api_version": "2023-03-15-preview",
+            "api_version": "2023-06-01-preview",
         },
         {
             "model": "gpt-3.5-turbo",
@@ -502,25 +506,25 @@ The compact history is more efficient and the individual API call history contai
 
 ### Other Utilities
 
-- a [`cost`](../reference/autogen/oai/completion#cost) function to calculate the cost of an API call.
-- a [`test`](../reference/autogen/oai/completion#test) function to conveniently evaluate the configuration over test data.
-- an [`extract_text_or_function_call`](../reference/autogen/oai/completion#extract_text_or_function_call) function to extract the text or function call from a completion or chat response.
+- a [`cost`](/docs/reference/autogen/oai/completion#cost) function to calculate the cost of an API call.
+- a [`test`](/docs/reference/autogen/oai/completion#test) function to conveniently evaluate the configuration over test data.
+- an [`extract_text_or_function_call`](/docs/reference/autogen/oai/completion#extract_text_or_function_call) function to extract the text or function call from a completion or chat response.
 
 
 ## Utilities for Applications
 
 ### Code
 
-[`flaml.autogen.code_utils`](../reference/autogen/code_utils) offers code-related utilities, such as:
-- a [`improve_code`](../reference/autogen/code_utils#improve_code) function to improve code for a given objective.
-- a [`generate_assertions`](../reference/autogen/code_utils#generate_assertions) function to generate assertion statements from function signature and docstr.
-- a [`implement`](../reference/autogen/code_utils#implement) function to implement a function from a definition.
-- a [`eval_function_completions`](../reference/autogen/code_utils#eval_function_completions) function to evaluate the success of a function completion task, or select a response from a list of responses using generated assertions.
+[`flaml.autogen.code_utils`](/docs/reference/autogen/code_utils) offers code-related utilities, such as:
+- a [`improve_code`](/docs/reference/autogen/code_utils#improve_code) function to improve code for a given objective.
+- a [`generate_assertions`](/docs/reference/autogen/code_utils#generate_assertions) function to generate assertion statements from function signature and docstr.
+- a [`implement`](/docs/reference/autogen/code_utils#implement) function to implement a function from a definition.
+- a [`eval_function_completions`](/docs/reference/autogen/code_utils#eval_function_completions) function to evaluate the success of a function completion task, or select a response from a list of responses using generated assertions.
 
 ### Math
 
-[`flaml.autogen.math_utils`](../reference/autogen/math_utils) offers utilities for math problems, such as:
-- a [eval_math_responses](../reference/autogen/math_utils#eval_math_responses) function to select a response using voting, and check if the final answer is correct if the canonical solution is provided.
+[`flaml.autogen.math_utils`](/docs/reference/autogen/math_utils) offers utilities for math problems, such as:
+- a [eval_math_responses](/docs/reference/autogen/math_utils#eval_math_responses) function to select a response using voting, and check if the final answer is correct if the canonical solution is provided.
 
 
 *Interested in the research that leads to this package? Please check the following papers.*

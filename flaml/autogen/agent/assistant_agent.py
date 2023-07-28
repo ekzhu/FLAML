@@ -1,11 +1,17 @@
-from .agent import Agent
-from flaml.autogen.code_utils import DEFAULT_MODEL
-from flaml import oai
-from typing import Dict, Union
+from .responsive_agent import ResponsiveAgent
+from typing import Callable, Dict, Optional, Union
 
 
-class AssistantAgent(Agent):
-    """(Experimental) Assistant agent, able to suggest code blocks with default system message."""
+class AssistantAgent(ResponsiveAgent):
+    """(Experimental) Assistant agent, designed to solve a task with LLM.
+
+    AssistantAgent is a subclass of ResponsiveAgent configured with a default system message.
+    The default system message is designed to solve a task with LLM,
+    including suggesting python code blocks and debugging.
+    `human_input_mode` is default to "NEVER"
+    and `code_execution_config` is default to False.
+    This agent doesn't execute code by default, and expects the user to execute the code.
+    """
 
     DEFAULT_SYSTEM_MESSAGE = """You are a helpful AI assistant.
     In the following cases, suggest python code (in a python coding block) or shell script (in a sh coding block) for the user to execute. You must indicate the script type in the code block. The user cannot provide any other feedback or perform any other action beyond executing the code you suggest. The user can't modify your code. So do not suggest incomplete code which requires users to modify. Don't use a code block if it's not intended to be executed by the user.
@@ -17,33 +23,41 @@ class AssistantAgent(Agent):
     Reply "TERMINATE" in the end when everything is done.
     """
 
-    DEFAULT_CONFIG = {
-        "model": DEFAULT_MODEL,
-    }
-
-    def __init__(self, name, system_message=DEFAULT_SYSTEM_MESSAGE, **config):
+    def __init__(
+        self,
+        name: str,
+        system_message: Optional[str] = DEFAULT_SYSTEM_MESSAGE,
+        oai_config: Optional[Union[Dict, bool]] = None,
+        is_termination_msg: Optional[Callable[[Dict], bool]] = None,
+        max_consecutive_auto_reply: Optional[int] = None,
+        human_input_mode: Optional[str] = "NEVER",
+        code_execution_config: Optional[Union[Dict, bool]] = False,
+        **kwargs,
+    ):
         """
         Args:
             name (str): agent name.
-            system_message (str): system message to be sent to the agent.
-            **config (dict): other configurations allowed in
-              [oai.Completion.create](../oai/Completion#create).
-              These configurations will be used when invoking LLM.
+            system_message (str): system message for the oai inference.
+                Please override this attribute if you want to reprogram the agent.
+            oai_config (dict): oai inference configuration.
+                Please refer to [oai.Completion.create](/docs/reference/autogen/oai/completion#create)
+                for available options.
+            is_termination_msg (function): a function that takes a message in the form of a dictionary
+                and returns a boolean value indicating if this received message is a termination message.
+                The dict can contain the following keys: "content", "role", "name", "function_call".
+            max_consecutive_auto_reply (int): the maximum number of consecutive auto replies.
+                default to None (no limit provided, class attribute MAX_CONSECUTIVE_AUTO_REPLY will be used as the limit in this case).
+                The limit only plays a role when human_input_mode is not "ALWAYS".
+            **kwargs (dict): Please refer to other kwargs in
+                [ResponsiveAgent](responsive_agent#__init__).
         """
-        super().__init__(name, system_message)
-        self._config = self.DEFAULT_CONFIG.copy()
-        self._config.update(config)
-        self._sender_dict = {}
-
-    def receive(self, message: Union[Dict, str], sender):
-        if sender.name not in self._sender_dict:
-            self._sender_dict[sender.name] = sender
-            self._oai_conversations[sender.name] = [{"content": self._system_message, "role": "system"}]
-
-        super().receive(message, sender)
-        responses = oai.ChatCompletion.create(messages=self._oai_conversations[sender.name], **self._config)
-        self.send(oai.ChatCompletion.extract_text_or_function_call(responses)[0], sender)
-
-    def reset(self):
-        self._sender_dict.clear()
-        self._oai_conversations.clear()
+        super().__init__(
+            name,
+            system_message,
+            is_termination_msg,
+            max_consecutive_auto_reply,
+            human_input_mode,
+            code_execution_config=code_execution_config,
+            oai_config=oai_config,
+            **kwargs,
+        )
