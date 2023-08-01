@@ -3,7 +3,8 @@ import os
 from pydantic import BaseModel, Extra, root_validator
 from typing import Any, Callable, Dict, List, Optional, Union
 from time import sleep
-from flaml.autogen.agent import UserProxyAgent
+
+from flaml.autogen.agentchat import Agent, UserProxyAgent
 from flaml.autogen.code_utils import UNKNOWN, extract_code, execute_code, infer_lang
 from flaml.autogen.math_utils import get_answer
 
@@ -96,16 +97,16 @@ def _is_termination_msg_mathchat(message):
     return not contain_code and get_answer(message) is not None and get_answer(message) != ""
 
 
-def _add_print_to_last_line(s):
+def _add_print_to_last_line(code):
     """Add print() to the last line of a string."""
     # 1. check if there is already a print statement
-    if "print(" in s:
-        return s
+    if "print(" in code:
+        return code
     # 2. extract the last line, enclose it in print() and return the new string
-    lines = s.splitlines()
+    lines = code.splitlines()
     last_line = lines[-1]
     if "\t" in last_line or "=" in last_line:
-        return s
+        return code
     if "=" in last_line:
         last_line = "print(" + last_line.split(" = ")[0] + ")"
         lines.append(last_line)
@@ -115,9 +116,9 @@ def _add_print_to_last_line(s):
     return "\n".join(lines)
 
 
-def _remove_print(s):
+def _remove_print(code):
     """remove all print statements from a string."""
-    lines = s.splitlines()
+    lines = code.splitlines()
     lines = [line for line in lines if not line.startswith("print(")]
     return "\n".join(lines)
 
@@ -126,6 +127,7 @@ class MathUserProxyAgent(UserProxyAgent):
     """(Experimental) A MathChat agent that can handle math problems."""
 
     MAX_CONSECUTIVE_AUTO_REPLY = 15  # maximum number of consecutive auto replies (subject to future change)
+    DEFAULT_REPLY = "Continue. Please keep solving the problem until you need to query. (If you get to the answer, put it in \\boxed{}.)"
 
     def __init__(
         self,
@@ -134,6 +136,7 @@ class MathUserProxyAgent(UserProxyAgent):
             Callable[[Dict], bool]
         ] = _is_termination_msg_mathchat,  # terminate if \boxed{} in message
         human_input_mode: Optional[str] = "NEVER",  # Fully automated
+        default_auto_reply: Optional[Union[str, Dict, None]] = DEFAULT_REPLY,
         max_invalid_q_per_step=3,  # a parameter needed in MathChat
         **kwargs,
     ):
@@ -151,6 +154,7 @@ class MathUserProxyAgent(UserProxyAgent):
                     the number of auto reply reaches the max_consecutive_auto_reply.
                 (3) (Default) When "NEVER", the agent will never prompt for human input. Under this mode, the conversation stops
                     when the number of auto reply reaches the max_consecutive_auto_reply or when is_termination_msg is True.
+            default_auto_reply (str or dict or None): the default auto reply message when no code execution or llm based reply is generated.
             max_invalid_q_per_step (int): (ADDED) the maximum number of invalid queries per step.
             **kwargs (dict): other kwargs in [UserProxyAgent](user_proxy_agent#__init__).
         """
@@ -158,6 +162,7 @@ class MathUserProxyAgent(UserProxyAgent):
             name=name,
             is_termination_msg=is_termination_msg,
             human_input_mode=human_input_mode,
+            default_auto_reply=default_auto_reply,
             **kwargs,
         )
 
@@ -218,14 +223,6 @@ class MathUserProxyAgent(UserProxyAgent):
         return_code, output, _ = execute_code(pycode, **self._code_execution_config, timeout=5)
         is_success = return_code == 0
 
-        # Decode the output
-        if isinstance(output, bytes):
-            try:
-                output = output.decode("utf-8")
-            except UnicodeDecodeError:
-                is_success = False
-                output = "The return cannot be decoded."
-
         if not is_success:
             # Remove the file information from the error string
             pattern = r'File "/[^"]+\.py", line \d+, in .+\n'
@@ -279,16 +276,21 @@ class MathUserProxyAgent(UserProxyAgent):
             is_success = False
         return output, is_success
 
-    def generate_reply(self, messages: List[Dict], default_reply: Union[str, Dict] = "") -> Union[str, Dict]:
+    def generate_reply(
+        self,
+        messages: Optional[List[Dict]] = None,
+        default_reply: Optional[Union[str, Dict]] = DEFAULT_REPLY,
+        sender: Optional[Agent] = None,
+    ) -> Union[str, Dict, None]:
         """Generate an auto reply."""
+        if messages is None:
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         message = message.get("content", "")
         code_blocks = extract_code(message)
 
         if len(code_blocks) == 1 and code_blocks[0][0] == UNKNOWN:
             # no code block is found, lang should be `UNKNOWN``
-            if default_reply == "":
-                default_reply = "Continue. Please keep solving the problem until you need to query. (If you get to the answer, put it in \\boxed{}.)"
             return default_reply
         is_success, all_success = True, True
         reply = ""

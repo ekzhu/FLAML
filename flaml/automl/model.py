@@ -60,6 +60,11 @@ try:
 except ImportError:
     resource = None
 
+try:
+    from lightgbm import LGBMClassifier, LGBMRegressor, LGBMRanker
+except ImportError:
+    LGBMClassifier = LGBMRegressor = LGBMRanker = None
+
 logger = logging.getLogger("flaml.automl")
 # FREE_MEM_RATIO = 0.2
 
@@ -1300,17 +1305,10 @@ class LGBMEstimator(BaseEstimator):
             self.params["verbose"] = -1
 
         if self._task.is_classification():
-            from lightgbm import LGBMClassifier
-
             self.estimator_class = LGBMClassifier
-
         elif task == "rank":
-            from lightgbm import LGBMRanker
-
             self.estimator_class = LGBMRanker
         else:
-            from lightgbm import LGBMRegressor
-
             self.estimator_class = LGBMRegressor
 
         self._time_per_iter = None
@@ -1510,7 +1508,12 @@ class XGBoostEstimator(SKLearnEstimator):
             params["grow_policy"] = params.get("grow_policy", "lossguide")
             params["tree_method"] = params.get("tree_method", "hist")
         # params["booster"] = params.get("booster", "gbtree")
-        params["use_label_encoder"] = params.get("use_label_encoder", False)
+
+        # use_label_encoder is deprecated in 1.7.
+        from xgboost import __version__ as xgboost_version
+
+        if xgboost_version < "1.7.0":
+            params["use_label_encoder"] = params.get("use_label_encoder", False)
         if "n_jobs" in config:
             params["nthread"] = params.pop("n_jobs")
         return params
