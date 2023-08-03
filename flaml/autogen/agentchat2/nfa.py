@@ -1,12 +1,12 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 from flaml.autogen.agentchat2.context import Context
 from flaml.autogen.agentchat2.message import Message
 
 
-class _Action:
+class _Transition:
     def __init__(
         self,
         source_state: Enum,
@@ -20,9 +20,23 @@ class _Action:
         self.action_function = action_function
 
 
-class Agent:
+class NFA:
+    """A NFA is a non-deterministic finite automaton that can be used to model
+    complex agent behaviors involving multiple states and isolated contexts.
+
+    Args:
+        start_context (Dict[Enum, List[Context]]): A dictionary mapping from
+            initial states to a list of initial contexts.
+
+    Raises:
+        TypeError: If start_context is not Dict type.
+        TypeError: If start_context's key is not Enum type.
+        TypeError: If start_context's value is not List type.
+        TypeError: If start_context's value's element is not Context type.
+    """
+
     def __init__(self, start_context: Dict[Enum, List[Context]]) -> None:
-        self._actions: Dict[Enum, List[_Action]] = dict()
+        self._actions: Dict[Enum, List[_Transition]] = dict()
         # Check types.
         for state, contexts in start_context.items():
             if not isinstance(state, Enum):
@@ -41,6 +55,22 @@ class Agent:
         trigger: Callable[[Message, Context], bool],
         action: Callable[[Message, Context], Context],
     ) -> None:
+        """Register a state transition.
+
+        Args:
+            source_state (Union[Enum, Tuple[Enum]]): Source state.
+            target_state (Union[Enum, Tuple[Enum]]): Target state.
+            trigger (Callable[[Message, Context], bool]): Trigger function that
+                returns a boolean value indicating whether the state transition
+                should be taken.
+            action (Callable[[Message, Context], Context]): Action function
+                executed during state transition. It returns a new context
+                object that will be associated with the target state.
+
+        Raises:
+            TypeError: If source_state or target_state is not Enum or Tuple type.
+            TypeError: If trigger or action is not Callable type.
+        """
         # Check types.
         if not isinstance(source_state, Enum) and not isinstance(source_state, tuple):
             raise TypeError(f"State must be Enum or Tuple type, but {type(source_state)}")
@@ -63,7 +93,7 @@ class Agent:
                 if tgt not in self._actions:
                     self._actions[tgt] = []
                 self._actions[src].append(
-                    _Action(
+                    _Transition(
                         src,
                         tgt,
                         trigger,
@@ -72,6 +102,14 @@ class Agent:
                 )
 
     def handle(self, message: Message) -> None:
+        """Process a incoming message and make state transitions if necessary.
+
+        Args:
+            message (Message): A message to be processed.
+
+        Raises:
+            TypeError: If message is not Message type.
+        """
         # Check types.
         if not isinstance(message, Message):
             raise TypeError(f"Message must be Message type, but {type(message)}")

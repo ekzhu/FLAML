@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
 
 from flaml.autogen.agentchat2.address import Address
-from flaml.autogen.agentchat2.agent import Agent
+from flaml.autogen.agentchat2.nfa import NFA
 from flaml.autogen.agentchat2.message import Message
 
 
 class MessageStream(ABC):
     @abstractmethod
-    def add_subscriber(self, address: Address, agent: Agent) -> None:
+    def add_subscriber(self, address: Address, agent: NFA) -> None:
         pass
 
     @abstractmethod
@@ -26,10 +26,10 @@ class MessageStream(ABC):
 
 class ListMessageStream(MessageStream):
     def __init__(self) -> None:
-        self._subscribers: Dict[Any, List[Agent]] = dict()
+        self._subscribers: Dict[Any, List[NFA]] = dict()
         self._messages: List[Tuple[Address, Message]] = []
 
-    def add_subscriber(self, address: Address, agent: Agent) -> None:
+    def add_subscriber(self, address: Address, agent: NFA) -> None:
         self._subscribers.setdefault(address, []).append(agent)
 
     def send(self, address: Address, message: Message) -> None:
