@@ -1,14 +1,21 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
+import logging
 
 from flaml.autogen.agentchat2.address import Address
-from flaml.autogen.agentchat2.nfa import NFA
+from flaml.autogen.agentchat2.agent import Agent
 from flaml.autogen.agentchat2.message import Message
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class MessageStream(ABC):
     @abstractmethod
-    def add_subscriber(self, address: Address, agent: NFA) -> None:
+    def add_subscriber(self, address: Address, agent: Agent) -> None:
         pass
 
     @abstractmethod
@@ -26,16 +33,19 @@ class MessageStream(ABC):
 
 class ListMessageStream(MessageStream):
     def __init__(self) -> None:
-        self._subscribers: Dict[Any, List[NFA]] = dict()
+        self._subscribers: Dict[Any, List[Agent]] = dict()
         self._messages: List[Tuple[Address, Message]] = []
 
-    def add_subscriber(self, address: Address, agent: NFA) -> None:
+    def add_subscriber(self, address: Address, agent: Agent) -> None:
+        logger.debug(f"Adding subscriber {agent} to address {address}")
         self._subscribers.setdefault(address, []).append(agent)
 
     def send(self, address: Address, message: Message) -> None:
+        logger.debug(f"Send message {message} to address {address}")
         self._messages.append((address, message))
 
     def broadcast(self, message: Message) -> None:
+        logger.debug(f"Broadcast message {message}")
         for address in self._subscribers:
             self._messages.append((address, message))
 

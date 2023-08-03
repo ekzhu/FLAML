@@ -101,8 +101,8 @@ class NFA:
                     )
                 )
 
-    def handle(self, message: Message) -> None:
-        """Process a incoming message and make state transitions if necessary.
+    def process(self, message: Message) -> None:
+        """Process an incoming message and make state transitions if necessary.
 
         Args:
             message (Message): A message to be processed.
@@ -124,3 +124,22 @@ class NFA:
                         new_contexts[action.target_state].append(new_context)
         # Old context is discard.
         self._contexts = new_contexts
+
+    def get_contexts(self, state: Enum) -> List[Context]:
+        """Get contexts associated with the given state.
+
+        Args:
+            state (Enum): A state.
+
+        Raises:
+            TypeError: If state is not Enum type.
+
+        Returns:
+            List[Context]: A list of contexts associated with the given state.
+        """
+        # Check types.
+        if not isinstance(state, Enum):
+            raise TypeError(f"State must be Enum type, but {type(state)}")
+        if state not in self._contexts:
+            return []
+        return self._contexts[state]
