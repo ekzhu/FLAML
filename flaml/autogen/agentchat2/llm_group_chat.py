@@ -75,18 +75,24 @@ def llm_group_chat_default_action(message: LLMGroupChatMessage, context: LLMGrou
 
 def llm_group_chat_action(message: LLMGroupChatMessage, context: LLMGroupChatContext) -> LLMGroupChatContext:
     response = oai.ChatCompletion.create(
-        messages=[context.system_message, *context.chat_history, message.message], **context.llm_config
+        messages=[context.system_message, *context.chat_history, message.message],
+        **context.llm_config,
     )
     reply_text = response.choices[0]["message"]["content"]
-    reply = {"role": "user", "content": reply_text, "name": context.name}
     context.message_stream.broadcast(
-        LLMGroupChatMessage(sender_name=context.name, message=reply),
+        LLMGroupChatMessage(
+            sender_name=context.name,
+            message={"role": "user", "content": reply_text, "name": context.name},
+        ),
     )
-    reply["role"] = "assistant"
     return LLMGroupChatContext(
         name=context.name,
         message_stream=context.message_stream,
         system_message=context.system_message,
         llm_config=context.llm_config,
-        chat_history=[*context.chat_history, message.message, reply],
+        chat_history=[
+            *context.chat_history,
+            message.message,
+            {"role": "assistant", "content": reply_text, "name": context.name},
+        ],
     )
