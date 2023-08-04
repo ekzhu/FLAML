@@ -36,6 +36,9 @@ class LLMGroupChatMessageStream(ListMessageStream):
     def add_subscriber(self, agent: LLMGroupChatAgent) -> None:
         return super().add_subscriber(agent.name, agent)
 
+    def broadcast(self, message: LLMGroupChatMessage) -> None:
+        return super().broadcast(message, lambda address, agent: agent.name != message.sender_name)
+
 
 class LLMGroupChatAgent(SingleStateAgent):
     def __init__(
@@ -57,6 +60,17 @@ class LLMGroupChatAgent(SingleStateAgent):
         )
         self.name = name
         message_stream.add_subscriber(self)
+        self.register_default_action(llm_group_chat_default_action)
+
+
+def llm_group_chat_default_action(message: LLMGroupChatMessage, context: LLMGroupChatContext) -> LLMGroupChatContext:
+    return LLMGroupChatContext(
+        name=context.name,
+        message_stream=context.message_stream,
+        system_message=context.system_message,
+        llm_config=context.llm_config,
+        chat_history=[*context.chat_history, message.message],
+    )
 
 
 def llm_group_chat_action(message: LLMGroupChatMessage, context: LLMGroupChatContext) -> LLMGroupChatContext:

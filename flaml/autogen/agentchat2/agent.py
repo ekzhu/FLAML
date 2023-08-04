@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from enum import Enum, EnumType
-from typing import Callable, Dict, List, Tuple, Union
+from enum import Enum
+from typing import Callable, List
 
 from flaml.autogen.agentchat2.context import Context
 from flaml.autogen.agentchat2.message import Message
@@ -32,7 +32,7 @@ class SingleStateAgent(Agent):
     def __init__(self, initial_contexts: List[Context]) -> None:
         self._nfa = NFA({self.states.WAITING_FOR_INPUT: initial_contexts})
 
-    def register(
+    def register_action(
         self,
         trigger: Callable[[Message, Context], bool],
         action: Callable[[Message, Context], Context],
@@ -49,10 +49,20 @@ class SingleStateAgent(Agent):
             TypeError: If trigger is not Callable type.
             TypeError: If action is not Callable type.
         """
-        self._nfa.register(
+        self._nfa.register_action(
             self.states.WAITING_FOR_INPUT,
             self.states.WAITING_FOR_INPUT,
             trigger,
+            action,
+        )
+
+    def register_default_action(
+        self,
+        action: Callable[[Message, Context], Context],
+    ) -> None:
+        self._nfa.register_default_action(
+            self.states.WAITING_FOR_INPUT,
+            self.states.WAITING_FOR_INPUT,
             action,
         )
 
