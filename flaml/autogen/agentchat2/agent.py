@@ -21,16 +21,16 @@ class SingleStateAgent(Agent):
     responds to user input with LLM-generated text.
 
     Args:
-        initial_context (Context): Initial context memory of the agent.
+        initial_contexts (List[Context]): The initial contexts of the agent.
 
     Raises:
-        TypeError: If initial_context is not Context type.
+        TypeError: If initial_contexts is not List[Context] type.
     """
 
     states = Enum("State", ["WAITING_FOR_INPUT"])
 
-    def __init__(self, initial_context: Context) -> None:
-        self._nfa = NFA({self.states.WAITING_FOR_INPUT: [initial_context]})
+    def __init__(self, initial_contexts: List[Context]) -> None:
+        self._nfa = NFA({self.states.WAITING_FOR_INPUT: initial_contexts})
 
     def register(
         self,

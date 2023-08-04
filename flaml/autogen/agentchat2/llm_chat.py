@@ -53,13 +53,15 @@ class LLMChatAgent(SingleStateAgent):
         llm_config: Dict[str, Any],
     ) -> None:
         super().__init__(
-            initial_context=LLMChatContext(
-                name,
-                message_stream,
-                partner_name,
-                system_message,
-                llm_config,
-            )
+            initial_contexts=[
+                LLMChatContext(
+                    name,
+                    message_stream,
+                    partner_name,
+                    system_message,
+                    llm_config,
+                )
+            ]
         )
         self.name = name
 
