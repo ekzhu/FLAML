@@ -1,5 +1,5 @@
 import pytest
-from flaml.autogen.agentchat import ResponsiveAgent
+from flaml.autogen.agentchat2.legacy_api import ResponsiveAgent
 
 
 def test_context():

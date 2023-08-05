@@ -1,16 +1,16 @@
-from flaml import autogen
+from flaml.autogen.agentchat2.legacy_api import GroupChatManager, ResponsiveAgent
 
 
 def test_chat_manager():
-    group_chat_manager = autogen.GroupChatManager(max_round=2, llm_config=False)
-    agent1 = autogen.ResponsiveAgent(
+    group_chat_manager = GroupChatManager(max_round=2, llm_config=False)
+    agent1 = ResponsiveAgent(
         "alice",
         max_consecutive_auto_reply=2,
         human_input_mode="NEVER",
         llm_config=False,
         default_auto_reply="This is alice sepaking.",
     )
-    agent2 = autogen.ResponsiveAgent(
+    agent2 = ResponsiveAgent(
         "bob",
         max_consecutive_auto_reply=2,
         human_input_mode="NEVER",
