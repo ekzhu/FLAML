@@ -1,91 +1,176 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+import json
+import pprint
+from typing import Any, Callable, Dict, List, Optional
 from flaml.autogen import oai
+from flaml.autogen.agentchat2.address import Address
 from flaml.autogen.agentchat2.agent import SingleStateAgent
 from flaml.autogen.agentchat2.context import Context
 from flaml.autogen.agentchat2.message import Message
-from flaml.autogen.agentchat2.stream import ListMessageStream, MessageStream
+from flaml.autogen.agentchat2.stream import MessageStream
 
 
 class LLMChatContext(Context):
     def __init__(
         self,
         name: str,
+        address: str,
         message_stream: MessageStream,
-        partner_name: str,
         system_message: Dict,
         llm_config: Dict[str, Any],
+        functions: Optional[Dict[str, Callable]] = None,
         chat_history: Optional[List[Dict]] = None,
     ) -> None:
         self.name = name
+        self.address = address
         self.message_stream = message_stream
-        self.partner_name = partner_name
         self.system_message = system_message
         self.llm_config = llm_config
-        self.chat_history = chat_history or []
+        self.functions = functions or dict()
+        self.chat_history = chat_history or list()
 
 
 class LLMChatMessage(Message):
-    def __init__(self, sender_name: str, receiver_name: str, message: Dict) -> None:
+    def __init__(
+        self,
+        sender_name: str,
+        sender_address: Address,
+        receiver_name: str,
+        receiver_address: Address,
+        message: Dict,
+    ) -> None:
         self.sender_name = sender_name
+        self.sender_address = sender_address
         self.receiver_name = receiver_name
+        self.receiver_address = receiver_address
         self.message = message
 
     def __repr__(self) -> str:
-        return f"LLMChatMessage(sender_name={self.sender_name}, receiver_name={self.receiver_name}, message={self.message})"
+        return pprint.pformat(self.__dict__)
 
 
-class LLMChatMessageStream(ListMessageStream):
-    def add_subscriber(self, agent: LLMChatAgent) -> None:
-        return super().add_subscriber(agent.name, agent)
+def llm_chat_action(
+    messages: List[LLMChatMessage],
+    context: LLMChatContext,
+) -> LLMChatContext:
+    # Group incoming messages by sender address.
+    messages_by_sender_address = dict()
+    for message in messages:
+        messages_by_sender_address.setdefault(message.sender_address, []).append(message)
+    # Process messages from each sender address.
+    sent_messages = []
+    for sender_address, messages_at_address in messages_by_sender_address.items():
+        private_messages = []
+        while True:
+            response = oai.ChatCompletion.create(
+                messages=[
+                    context.system_message,
+                    *context.chat_history,
+                    *[msg.message for msg in messages_at_address],
+                    *private_messages,
+                ],
+                **context.llm_config,
+            )["choices"][0]["message"]
+            private_messages.append(response)
+            if "function_call" in response:
+                function_name = response["function_call"]["name"]
+                function = context.functions[function_name]
+                try:
+                    function_args = json.loads(response["function_call"]["arguments"])
+                    function_return_val = function(**function_args)
+                    reply_text = json.dumps(function_return_val)
+                except Exception as e:
+                    reply_text = str(e)
+                private_messages.append(
+                    {
+                        "role": "function",
+                        "content": reply_text,
+                        "name": function_name,
+                    }
+                )
+                continue
+            break
+        reply_text = private_messages[-1]["content"]
+        context.message_stream.send(
+            message.sender_address,
+            LLMChatMessage(
+                context.name,
+                context.address,
+                message.sender_name,
+                message.sender_address,
+                {"role": "user", "content": reply_text, "name": context.name},
+            ),
+            lambda address, agent: True,
+        )
+        sent_messages.append(
+            {"role": "assistant", "content": reply_text, "name": context.name},
+        )
+    return LLMChatContext(
+        name=context.name,
+        address=context.address,
+        message_stream=context.message_stream,
+        system_message=context.system_message,
+        llm_config=context.llm_config,
+        functions=context.functions,
+        chat_history=[
+            *context.chat_history,
+            *[msg.message for msg in messages],
+            *sent_messages,
+        ],
+    )
 
-    def send(self, message: LLMChatMessage) -> None:
-        return super().send(message.receiver_name, message)
+
+def llm_chat_save_messages(
+    messages: List[LLMChatMessage],
+    context: LLMChatContext,
+) -> LLMChatContext:
+    return LLMChatContext(
+        name=context.name,
+        address=context.address,
+        message_stream=context.message_stream,
+        system_message=context.system_message,
+        llm_config=context.llm_config,
+        functions=context.functions,
+        chat_history=[
+            *context.chat_history,
+            *[msg.message for msg in messages],
+        ],
+    )
 
 
 class LLMChatAgent(SingleStateAgent):
     def __init__(
         self,
         name: str,
-        message_stream: LLMChatMessageStream,
-        partner_name: str,
+        address: str,
+        message_stream: MessageStream,
         system_message: Dict,
         llm_config: Dict[str, Any],
+        functions: Optional[Dict[str, Callable]] = None,
+        trigger: Optional[Callable[[List[LLMChatMessage], LLMChatContext], bool]] = lambda messages, context: True,
+        action: Optional[Callable[[List[LLMChatMessage], LLMChatContext], LLMChatContext]] = llm_chat_action,
+        default_action: Optional[
+            Callable[[List[LLMChatMessage], LLMChatContext], LLMChatContext]
+        ] = llm_chat_save_messages,
     ) -> None:
         super().__init__(
             initial_contexts=[
                 LLMChatContext(
-                    name,
-                    message_stream,
-                    partner_name,
-                    system_message,
-                    llm_config,
+                    name=name,
+                    address=address,
+                    message_stream=message_stream,
+                    system_message=system_message,
+                    llm_config=llm_config,
+                    functions=functions,
                 )
             ]
         )
-        self.name = name
-        message_stream.add_subscriber(self)
-
-
-def llm_chat_trigger(message: LLMChatMessage, context: LLMChatContext) -> bool:
-    return message.sender_name == context.partner_name
-
-
-def llm_chat_action(message: LLMChatMessage, context: LLMChatContext) -> LLMChatContext:
-    response = oai.ChatCompletion.create(
-        messages=[context.system_message, *context.chat_history, message.message], **context.llm_config
-    )
-    reply_text = response.choices[0]["message"]["content"]
-    reply = {"role": "user", "content": reply_text, "name": context.name}
-    context.message_stream.send(
-        LLMChatMessage(sender_name=context.name, receiver_name=context.partner_name, message=reply),
-    )
-    reply["role"] = "assistant"
-    return LLMChatContext(
-        name=context.name,
-        message_stream=context.message_stream,
-        partner_name=context.partner_name,
-        system_message=context.system_message,
-        llm_config=context.llm_config,
-        chat_history=[*context.chat_history, message.message, reply],
-    )
+        if trigger is not None and action is not None:
+            self.register_action(trigger, action)
+        if default_action is not None:
+            self.register_default_action(default_action)
+        message_stream.add_subscriber(
+            address,
+            self,
+            (lambda message: isinstance(message, LLMChatMessage) and message.sender_name != name),
+        )

@@ -15,21 +15,18 @@ logger.setLevel(logging.DEBUG)
 
 class MessageStream(ABC):
     @abstractmethod
-    def add_subscriber(self, address: Address, agent: Agent) -> None:
+    def add_subscriber(
+        self,
+        address: Address,
+        agent: Agent,
+        subscription_policy: Callable[[Message], bool],
+    ) -> None:
         pass
 
     @abstractmethod
     def send(
         self,
         address: Address,
-        message: Message,
-        delivery_policy: Callable[[Address, Agent], bool],
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def broadcast(
-        self,
         message: Message,
         delivery_policy: Callable[[Address, Agent], bool],
     ) -> None:
@@ -42,12 +39,17 @@ class MessageStream(ABC):
 
 class ListMessageStream(MessageStream):
     def __init__(self) -> None:
-        self._subscribers: Dict[Any, List[Agent]] = dict()
-        self._messages: List[Tuple[Address, Message, Callable[[Address, Agent], bool]]] = []
+        self._subscribers: Dict[Address, List[Tuple[Agent, Callable[[Message], bool]]]] = dict()
+        self._buffers: Dict[Address, Dict[Agent, List[Message]]] = dict()
 
-    def add_subscriber(self, address: Address, agent: Agent) -> None:
-        logger.debug(f"Adding subscriber {agent} to address {address}")
-        self._subscribers.setdefault(address, []).append(agent)
+    def add_subscriber(
+        self,
+        address: Address,
+        agent: Agent,
+        subscription_policy: Callable[[Message], bool],
+    ) -> None:
+        logger.debug(f"Add subscriber {agent} to address {address}")
+        self._subscribers.setdefault(address, []).append((agent, subscription_policy))
 
     def send(
         self,
@@ -55,25 +57,18 @@ class ListMessageStream(MessageStream):
         message: Message,
         delivery_policy: Callable[[Address, Agent], bool],
     ) -> None:
-        logger.debug(f"Send message {message} to address {address}")
-        self._messages.append((address, message, delivery_policy))
-
-    def broadcast(
-        self,
-        message: Message,
-        delivery_policy: Callable[[Address, Agent], bool],
-    ) -> None:
-        logger.debug(f"Broadcast message {message}")
-        for address in self._subscribers:
-            self._messages.append((address, message, delivery_policy))
+        if address not in self._subscribers:
+            raise ValueError(f"Unknown address {address}")
+        if len(self._subscribers[address]) == 0:
+            raise ValueError(f"Empty address {address}")
+        logger.debug(f"Send\n{message}\nto address {address}")
+        for reciever, subscription_policy in self._subscribers[address]:
+            if delivery_policy(address, reciever) and subscription_policy(message):
+                self._buffers.setdefault(address, {}).setdefault(reciever, []).append(message)
 
     def run(self) -> None:
-        while len(self._messages) > 0:
-            address, message, delivery_policy = self._messages.pop(0)
-            if address not in self._subscribers:
-                raise ValueError(f"Message {message} sent to unknown address {address}")
-            if len(self._subscribers[address]) == 0:
-                raise ValueError(f"Message {message} sent to empty address {address}")
-            for reciever in self._subscribers[address]:
-                if delivery_policy(address, reciever):
-                    reciever.handle(message)
+        while any(len(buffer) > 0 for address_buffers in self._buffers.values() for buffer in address_buffers.values()):
+            for address, address_buffers in list(self._buffers.items()):
+                for reciever, buffer in list(address_buffers.items()):
+                    reciever.handle(buffer)
+                    buffer.clear()

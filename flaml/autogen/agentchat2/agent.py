@@ -4,19 +4,19 @@ from typing import Callable, List
 
 from flaml.autogen.agentchat2.context import Context
 from flaml.autogen.agentchat2.message import Message
-from flaml.autogen.agentchat2.nfa import NFA
+from flaml.autogen.agentchat2.automaton import Automaton
 
 
 class Agent(ABC):
-    """An agent is an abstract message event handler."""
+    """An agent is an abstract message handler."""
 
     @abstractmethod
-    def handle(self, message: Message) -> None:
+    def handle(self, messages: List[Message]) -> None:
         pass
 
 
 class SingleStateAgent(Agent):
-    """A single-state agent is a single-state NFA. It can be used to model
+    """A single-state agent is a single-state automaton. It can be used to model
     infinite loop behaviors. For example, a LLM-powered chat bot that always
     responds to user input with LLM-generated text.
 
@@ -30,26 +30,26 @@ class SingleStateAgent(Agent):
     states = Enum("State", ["WAITING_FOR_INPUT"])
 
     def __init__(self, initial_contexts: List[Context]) -> None:
-        self._nfa = NFA({self.states.WAITING_FOR_INPUT: initial_contexts})
+        self._automaton = Automaton({self.states.WAITING_FOR_INPUT: initial_contexts})
 
     def register_action(
         self,
-        trigger: Callable[[Message, Context], bool],
-        action: Callable[[Message, Context], Context],
+        trigger: Callable[[List[Message], Context], bool],
+        action: Callable[[List[Message], Context], Context],
     ) -> None:
-        """Register an agent action triggered by a message.
+        """Register an agent action triggered by a list of messages.
 
         Args:
-            trigger (Callable[[Message, Context], bool]): A function that
+            trigger (Callable[[List[Message], Context], bool]): A function that
                 returns True if the action should be triggered.
-            action (Callable[[Message, Context], Context]): A function that
+            action (Callable[[List[Message], Context], Context]): A function that
                 returns the updated context after the action is performed.
 
         Raises:
             TypeError: If trigger is not Callable type.
             TypeError: If action is not Callable type.
         """
-        self._nfa.register_action(
+        self._automaton.register_action(
             self.states.WAITING_FOR_INPUT,
             self.states.WAITING_FOR_INPUT,
             trigger,
@@ -58,16 +58,16 @@ class SingleStateAgent(Agent):
 
     def register_default_action(
         self,
-        action: Callable[[Message, Context], Context],
+        action: Callable[[List[Message], Context], Context],
     ) -> None:
-        self._nfa.register_default_action(
+        self._automaton.register_default_action(
             self.states.WAITING_FOR_INPUT,
             self.states.WAITING_FOR_INPUT,
             action,
         )
 
-    def handle(self, message: Message) -> None:
-        return self._nfa.process(message)
+    def handle(self, messages: List[Message]) -> None:
+        return self._automaton.process(messages)
 
     def get_contexts(self) -> List[Context]:
         """Get all contexts of the agent.
@@ -75,11 +75,11 @@ class SingleStateAgent(Agent):
         Returns:
             List[Context]: A list of contexts.
         """
-        return self._nfa.get_contexts(self.states.WAITING_FOR_INPUT)
+        return self._automaton.get_contexts(self.states.WAITING_FOR_INPUT)
 
 
-class MultiStateAgent(NFA, Agent):
-    """A multi-state agent is an NFA."""
+class MultiStateAgent(Automaton, Agent):
+    """A multi-state agent is an Automaton."""
 
-    def handle(self, message: Message) -> None:
-        return self.process(message)
+    def handle(self, messages: List[Message]) -> None:
+        return self.process(messages)

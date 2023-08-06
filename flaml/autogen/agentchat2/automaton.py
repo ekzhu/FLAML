@@ -11,8 +11,8 @@ class _Transition:
         self,
         source_state: Enum,
         target_state: Enum,
-        trigger_function: Callable[[Message, Context], bool],
-        action_function: Callable[[Message, Context], Context],
+        trigger_function: Callable[[List[Message], Context], bool],
+        action_function: Callable[[List[Message], Context], Context],
     ) -> None:
         self.source_state = source_state
         self.target_state = target_state
@@ -20,9 +20,9 @@ class _Transition:
         self.action_function = action_function
 
 
-class NFA:
-    """A NFA is a non-deterministic finite automaton that can be used to model
-    complex agent behaviors involving multiple states and isolated contexts.
+class Automaton:
+    """An automaton is a finate state machine that can be used to model complex
+    agent behaviors involving multiple states and isolated contexts.
 
     Args:
         start_context (Dict[Enum, List[Context]]): A dictionary mapping from
@@ -53,18 +53,18 @@ class NFA:
         self,
         source_state: Union[Enum, Tuple[Enum]],
         target_state: Union[Enum, Tuple[Enum]],
-        trigger: Callable[[Message, Context], bool],
-        action: Callable[[Message, Context], Context],
+        trigger: Callable[[List[Message], Context], bool],
+        action: Callable[[List[Message], Context], Context],
     ) -> None:
-        """Register a state transition.
+        """Register a state transition defined by a trigger and an action.
 
         Args:
             source_state (Union[Enum, Tuple[Enum]]): Source state.
             target_state (Union[Enum, Tuple[Enum]]): Target state.
-            trigger (Callable[[Message, Context], bool]): Trigger function that
+            trigger (Callable[[List[Message], Context], bool]): Trigger function that
                 returns a boolean value indicating whether the state transition
                 should be taken.
-            action (Callable[[Message, Context], Context]): Action function
+            action (Callable[[List[Message], Context], Context]): Action function
                 executed during state transition. It returns a new context
                 object that will be associated with the target state.
 
@@ -89,10 +89,8 @@ class NFA:
 
         for src in source_state:
             for tgt in target_state:
-                if src not in self._actions:
-                    self._actions[src] = []
-                if tgt not in self._actions:
-                    self._actions[tgt] = []
+                self._actions.setdefault(src, [])
+                self._actions.setdefault(tgt, [])
                 self._actions[src].append(
                     _Transition(
                         src,
@@ -106,7 +104,7 @@ class NFA:
         self,
         source_state: Union[Enum, Tuple[Enum]],
         target_state: Union[Enum, Tuple[Enum]],
-        action: Callable[[Message, Context], Context],
+        action: Callable[[List[Message], Context], Context],
     ):
         # Check types.
         if not isinstance(source_state, Enum) and not isinstance(source_state, tuple):
@@ -123,31 +121,33 @@ class NFA:
 
         for src in source_state:
             for tgt in target_state:
-                if src not in self._actions:
-                    self._default_actions[src] = []
-                if tgt not in self._actions:
-                    self._default_actions[tgt] = []
+                self._default_actions.setdefault(src, [])
+                self._default_actions.setdefault(tgt, [])
                 self._default_actions[src].append(
                     _Transition(
                         src,
                         tgt,
-                        lambda message, context: True,
+                        lambda messages, context: True,
                         action,
                     )
                 )
 
-    def process(self, message: Message) -> None:
-        """Process an incoming message and make state transitions if necessary.
+    def process(self, messages: List[Message]) -> None:
+        """Process incoming messages and make state transitions if necessary.
 
         Args:
-            message (Message): A message to be processed.
+            messages (List[Message]): A list of new messages to be processed.
 
         Raises:
-            TypeError: If message is not Message type.
+            TypeError: If messages is not List type.
+            TypeError: If messages's element is not Message type.
         """
         # Check types.
-        if not isinstance(message, Message):
-            raise TypeError(f"Message must be Message type, but {type(message)}")
+        if not isinstance(messages, list):
+            raise TypeError(f"Messages must be List type, but {type(messages)}")
+        for message in messages:
+            if not isinstance(message, Message):
+                raise TypeError(f"Message must be Message type, but {type(message)}")
         new_contexts = {}
         for state, contexts in self._contexts.items():
             if state not in self._actions and state not in self._default_actions:
@@ -156,14 +156,14 @@ class NFA:
             for context in contexts:
                 handled = False
                 for action in self._actions[state]:
-                    if action.trigger_function(message, context):
-                        new_context = action.action_function(message, context)
+                    if action.trigger_function(messages, context):
+                        new_context = action.action_function(messages, context)
                         new_contexts.setdefault(action.target_state, []).append(new_context)
                         handled = True
                 if not handled and state in self._default_actions:
                     # Execute default actions if this context is not handled by any action.
                     for action in self._default_actions[state]:
-                        new_context = action.action_function(message, context)
+                        new_context = action.action_function(messages, context)
                         new_contexts.setdefault(action.target_state, []).append(new_context)
         # Old context is discard if not handled.
         self._contexts = new_contexts
