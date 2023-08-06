@@ -58,9 +58,11 @@ class ListMessageStream(MessageStream):
         delivery_policy: Callable[[Address, Agent], bool],
     ) -> None:
         if address not in self._subscribers:
-            raise ValueError(f"Unknown address {address}")
+            logger.warning(f"{message} sent to unknown address {address} is discarded.")
+            return
         if len(self._subscribers[address]) == 0:
-            raise ValueError(f"Empty address {address}")
+            logger.warning(f"{message} sent to address {address} with no subscribers is discarded.")
+            return
         logger.debug(f"Send\n{message}\nto address {address}")
         for reciever, subscription_policy in self._subscribers[address]:
             if delivery_policy(address, reciever) and subscription_policy(message):

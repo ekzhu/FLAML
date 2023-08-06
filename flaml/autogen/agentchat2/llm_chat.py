@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 import pprint
 from typing import Any, Callable, Dict, List, Optional
 from flaml.autogen import oai
@@ -8,6 +9,12 @@ from flaml.autogen.agentchat2.agent import SingleStateAgent
 from flaml.autogen.agentchat2.context import Context
 from flaml.autogen.agentchat2.message import Message
 from flaml.autogen.agentchat2.stream import MessageStream
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logger.addHandler(handler)
 
 
 class LLMChatContext(Context):
@@ -58,7 +65,7 @@ def llm_chat_action(
     for message in messages:
         messages_by_sender_address.setdefault(message.sender_address, []).append(message)
     # Process messages from each sender address.
-    sent_messages = []
+    new_messages = []
     for sender_address, messages_at_address in messages_by_sender_address.items():
         private_messages = []
         while True:
@@ -71,14 +78,20 @@ def llm_chat_action(
                 ],
                 **context.llm_config,
             )["choices"][0]["message"]
+            logger.debug(f"[Private] {context.name}: \n{pprint.pformat(response)}")
             private_messages.append(response)
             if "function_call" in response:
                 function_name = response["function_call"]["name"]
                 function = context.functions[function_name]
                 try:
                     function_args = json.loads(response["function_call"]["arguments"])
+                    logger.debug(f"[Private] {context.name}: executing {function_name}({function_args})...")
                     function_return_val = function(**function_args)
-                    reply_text = json.dumps(function_return_val)
+                    logger.debug(f"[Private] {context.name}: {function_name} returned {function_return_val}")
+                    try:
+                        reply_text = json.dumps(function_return_val)
+                    except TypeError:
+                        reply_text = str(function_return_val)
                 except Exception as e:
                     reply_text = str(e)
                 private_messages.append(
@@ -88,6 +101,7 @@ def llm_chat_action(
                         "name": function_name,
                     }
                 )
+                logger.debug(f"[Private] {context.name}: \n{pprint.pformat(private_messages[-1])}")
                 continue
             break
         reply_text = private_messages[-1]["content"]
@@ -102,9 +116,7 @@ def llm_chat_action(
             ),
             lambda address, agent: True,
         )
-        sent_messages.append(
-            {"role": "assistant", "content": reply_text, "name": context.name},
-        )
+        new_messages.extend(private_messages)
     return LLMChatContext(
         name=context.name,
         address=context.address,
@@ -115,7 +127,7 @@ def llm_chat_action(
         chat_history=[
             *context.chat_history,
             *[msg.message for msg in messages],
-            *sent_messages,
+            *new_messages,
         ],
     )
 
